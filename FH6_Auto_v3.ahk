@@ -231,8 +231,8 @@ SEQ_MTG := [
     ["PgDn",  100,  400],
     ["PgDn",  100, 1000],
     ["Enter", 100,  800],
-    ["Enter", 100, 11000],
-    ["Right", 100, 1000],
+    ["Enter", 100, 13000],
+    ["Right", 100, 2000],
 ]
 
 ; 车库 → 蓝图
@@ -257,7 +257,7 @@ SEQ_GTM := [
     ["Y",     100, 1000],
     ["Enter", 100, 1000],
     ["Esc",   100, 1000],
-    ["Enter", 100, 10000],
+    ["Enter", 100, 14000],
 ]
 
 ; ══════════════════════════════════════════════════════════════
@@ -857,15 +857,15 @@ RunMasteryBody() {
     GSend "{ESC down}"
     Sleep 100
     GSend "{ESC up}"
-    Sleep 400
+    Sleep 800
     GSend "{Left down}"
     Sleep 100
     GSend "{Left up}"
-    Sleep 100
+    Sleep 400
     GSend "{Enter down}"
     Sleep 100
     GSend "{Enter up}"
-    Sleep 100
+    Sleep 400
     GSend "{Enter down}"
     Sleep 100
     GSend "{Enter up}"
