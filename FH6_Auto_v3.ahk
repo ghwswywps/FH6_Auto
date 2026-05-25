@@ -53,6 +53,94 @@ AUTO_MASTERY_LOOPS := 109   ; 每周期刷熟练度圈数
 AUTO_BUYCAR_TIMES  := 33    ; 每周期买车次数
 
 ; ══════════════════════════════════════════════════════════════
+;  ★ 导航序列配置（低配 / 高配，自行调整延迟）
+;    低配：加载较慢，延迟更长；高配：加载较快，延迟更短
+;    两套配置初始值相同，根据自身机器情况修改对应版本即可
+; ══════════════════════════════════════════════════════════════
+
+; ── 蓝图 → 车库（低配）──
+SEQ_MTG_LOW := [
+    ["Down",  100,  200],
+    ["Down",  100,  200],
+    ["Down",  100,  200],
+    ["Down",  100,  800],
+    ["Enter", 100, 1000],
+    ["Enter", 100, 22000],
+    ["Esc",   100, 1500],
+    ["PgDn",  100,  600],
+    ["PgDn",  100, 1200],
+    ["Enter", 100, 1000],
+    ["Enter", 100, 20000],
+    ["Right", 100, 2000],
+]
+
+; ── 蓝图 → 车库（高配）──
+SEQ_MTG_HIGH := [
+    ["Down",  100,  150],
+    ["Down",  100,  150],
+    ["Down",  100,  150],
+    ["Down",  100,  600],
+    ["Enter", 100, 1000],
+    ["Enter", 100, 18000],
+    ["Esc",   100, 1500],
+    ["PgDn",  100,  400],
+    ["PgDn",  100, 1000],
+    ["Enter", 100,  800],
+    ["Enter", 100, 15000],
+    ["Right", 100, 2000],
+]
+
+; ── 车库 → 蓝图（低配）──
+SEQ_GTM_LOW := [
+    ["Esc",   100, 13000],
+    ["Esc",   100, 2500],
+    ["PgDn",  100,  200],
+    ["PgDn",  100,  200],
+    ["PgDn",  100,  200],
+    ["PgDn",  100,  500],
+    ["Enter", 100, 1500],
+    ["Enter", 100, 1500],
+    ["PgDn",  100,  200],
+    ["PgDn",  100,  200],
+    ["PgDn",  100,  200],
+    ["PgDn",  100,  200],
+    ["PgDn",  100,  200],
+    ["PgDn",  100,  200],
+    ["PgDn",  100, 10000],
+    ["Enter", 100, 11000],
+    ["Enter", 100, 4000],
+    ["Y",     100, 1200],
+    ["Enter", 100, 1200],
+    ["Esc",   100, 1200],
+    ["Enter", 100, 16000],
+]
+
+; ── 车库 → 蓝图（高配）──
+SEQ_GTM_HIGH := [
+    ["Esc",   100, 11000],
+    ["Esc",   100, 1100],
+    ["PgDn",  100,  150],
+    ["PgDn",  100,  150],
+    ["PgDn",  100,  150],
+    ["PgDn",  100,  500],
+    ["Enter", 100,  900],
+    ["Enter", 100, 1000],
+    ["PgDn",  100,  150],
+    ["PgDn",  100,  150],
+    ["PgDn",  100,  150],
+    ["PgDn",  100,  150],
+    ["PgDn",  100,  150],
+    ["PgDn",  100,  150],
+    ["PgDn",  100, 5000],
+    ["Enter", 100, 7000],
+    ["Enter", 100, 3000],
+    ["Y",     100, 1000],
+    ["Enter", 100, 1000],
+    ["Esc",   100, 1000],
+    ["Enter", 100, 15000],
+]
+
+; ══════════════════════════════════════════════════════════════
 ;  全局状态变量
 ; ══════════════════════════════════════════════════════════════
 bcRunning       := false
@@ -73,6 +161,21 @@ autoCycle       := 0
 autoPhase       := "—"
 
 GameHwnd        := 0
+
+navConfig       := "low"    ; "low" | "high"  — 由 GUI 单选按钮控制
+brandOrder      := "pinyin" ; "pinyin" | "other" — 由 GUI 单选按钮控制
+
+; ══════════════════════════════════════════════════════════════
+;  导航序列选取辅助函数
+; ══════════════════════════════════════════════════════════════
+GetSeqMTG() {
+    global navConfig, SEQ_MTG_LOW, SEQ_MTG_HIGH
+    return (navConfig = "low") ? SEQ_MTG_LOW : SEQ_MTG_HIGH
+}
+GetSeqGTM() {
+    global navConfig, SEQ_GTM_LOW, SEQ_GTM_HIGH
+    return (navConfig = "low") ? SEQ_GTM_LOW : SEQ_GTM_HIGH
+}
 
 ; ══════════════════════════════════════════════════════════════
 ;  GUI
@@ -126,139 +229,114 @@ G.SetFont("s8 c888888", "Consolas")
 navStatusLbl := G.Add("Text", "x60 y250 w" (GW-70) " h14", "■ 待机")
 G.SetFont("s8 cFFD700", "Consolas")
 navStepLbl   := G.Add("Text", "x60 y266 w" (GW-70) " h14", "—")
-G.Add("Text", "x0 y282 w" GW " h1 Background2A2A4A")
+
+; ── 导航配置（低配/高配）互斥单选 ──
+G.SetFont("s8 c666677", "Consolas")
+G.Add("Text", "x10 y284 w46 h16", "配置:")
+G.SetFont("s8 c888888", "Consolas")
+navLowRadio  := G.Add("Radio", "x60 y283 w55 h16 Checked", "低配")
+navHighRadio := G.Add("Radio", "x118 y283 w55 h16", "高配")
+navLowRadio.OnEvent("Click",  (*) => (navConfig := "low",  Log("--- 导航配置切换: 低配")))
+navHighRadio.OnEvent("Click", (*) => (navConfig := "high", Log("--- 导航配置切换: 高配")))
+
+G.Add("Text", "x0 y302 w" GW " h1 Background2A2A4A")
 
 ; ── 买车+加点 ──
 G.SetFont("s8 Bold cFFD700", "Consolas")
-G.Add("Text", "x10 y288 w" (GW-20) " h14", "[ 买车 + 加点  F1 ]")
+G.Add("Text", "x10 y308 w" (GW-20) " h14", "[ 买车 + 加点  F1 ]")
+
+; ── 品牌顺序（拼音/非拼音）互斥单选 ──
 G.SetFont("s8 c666677", "Consolas")
-G.Add("Text", "x10 y304 w46 h14", "状态:")
-G.Add("Text", "x10 y320 w46 h14", "进度:")
-G.Add("Text", "x10 y336 w46 h14", "运行:")
-G.Add("Text", "x10 y352 w56 h14", "手动次数:")
+G.Add("Text", "x10 y326 w46 h16", "品牌:")
 G.SetFont("s8 c888888", "Consolas")
-bcStatusLbl   := G.Add("Text", "x60 y304 w" (GW-70) " h14", "■ 待机")
+brandPinyinRadio := G.Add("Radio", "x60 y325 w55 h16 Checked", "拼音")
+brandOtherRadio  := G.Add("Radio", "x118 y325 w65 h16", "非拼音")
+brandPinyinRadio.OnEvent("Click", (*) => (brandOrder := "pinyin", Log("--- 品牌顺序切换: 拼音")))
+brandOtherRadio.OnEvent("Click",  (*) => (brandOrder := "other",  Log("--- 品牌顺序切换: 非拼音")))
+
+G.SetFont("s8 c666677", "Consolas")
+G.Add("Text", "x10 y344 w46 h14", "状态:")
+G.Add("Text", "x10 y360 w46 h14", "进度:")
+G.Add("Text", "x10 y376 w46 h14", "运行:")
+G.Add("Text", "x10 y392 w56 h14", "手动次数:")
+G.SetFont("s8 c888888", "Consolas")
+bcStatusLbl   := G.Add("Text", "x60 y344 w" (GW-70) " h14", "■ 待机")
 G.SetFont("s8 cFFFFFF", "Consolas")
-bcProgressLbl := G.Add("Text", "x60 y320 w90 h14", "0 / 0")
+bcProgressLbl := G.Add("Text", "x60 y360 w90 h14", "0 / 0")
 G.SetFont("s8 cF9E2AF", "Consolas")
-bcTimerLbl    := G.Add("Text", "x60 y336 w90 h14", "--:--")
+bcTimerLbl    := G.Add("Text", "x60 y376 w90 h14", "--:--")
 G.SetFont("s9 c000000", "Consolas")
-loopEdit      := G.Add("Edit", "x72 y349 w50 h18 Number", "1")
-G.Add("Text", "x0 y372 w" GW " h1 Background2A2A4A")
+loopEdit      := G.Add("Edit", "x72 y389 w50 h18 Number", "1")
+G.Add("Text", "x0 y412 w" GW " h1 Background2A2A4A")
 
 ; ── W循环 ──
 G.SetFont("s8 Bold cFFD700", "Consolas")
-G.Add("Text", "x10 y378 w" (GW-20) " h14", "[ W 循环  F9 ]")
+G.Add("Text", "x10 y418 w" (GW-20) " h14", "[ W 循环  F9 ]")
 G.SetFont("s8 c666677", "Consolas")
-G.Add("Text", "x10 y394 w46 h14", "状态:")
+G.Add("Text", "x10 y434 w46 h14", "状态:")
 G.SetFont("s8 c888888", "Consolas")
-wStatusLbl := G.Add("Text", "x60 y394 w" (GW-70) " h14", "■ 待机")
-G.Add("Text", "x0 y410 w" GW " h1 Background2A2A4A")
+wStatusLbl := G.Add("Text", "x60 y434 w" (GW-70) " h14", "■ 待机")
+G.Add("Text", "x0 y450 w" GW " h1 Background2A2A4A")
 
 ; ── 熟练度循环 ──
 G.SetFont("s8 Bold cFFD700", "Consolas")
-G.Add("Text", "x10 y416 w" (GW-20) " h14", "[ 熟练度循环  F8 ]")
+G.Add("Text", "x10 y456 w" (GW-20) " h14", "[ 熟练度循环  F8 ]")
 G.SetFont("s8 c666677", "Consolas")
-G.Add("Text", "x10 y432 w46 h14", "状态:")
-G.Add("Text", "x10 y448 w46 h14", "阶段:")
-G.Add("Text", "x10 y464 w46 h14", "次数:")
+G.Add("Text", "x10 y472 w46 h14", "状态:")
+G.Add("Text", "x10 y488 w46 h14", "阶段:")
+G.Add("Text", "x10 y504 w46 h14", "次数:")
 G.SetFont("s8 c888888", "Consolas")
-bStatusLbl   := G.Add("Text", "x60 y432 w" (GW-70) " h14", "■ 待机")
+bStatusLbl   := G.Add("Text", "x60 y472 w" (GW-70) " h14", "■ 待机")
 G.SetFont("s8 cFFD700", "Consolas")
-PhaseLbl     := G.Add("Text", "x60 y448 w100 h14", "—")
+PhaseLbl     := G.Add("Text", "x60 y488 w100 h14", "—")
 G.SetFont("s8 c666677", "Consolas")
-G.Add("Text", "x168 y448 w30 h14", "剩余:")
+G.Add("Text", "x168 y488 w30 h14", "剩余:")
 G.SetFont("s8 c00CFFF", "Consolas")
-CountdownLbl := G.Add("Text", "x202 y448 w" (GW-212) " h14", "—")
+CountdownLbl := G.Add("Text", "x202 y488 w" (GW-212) " h14", "—")
 G.SetFont("s8 cFF8800", "Consolas")
-LoopCountLbl := G.Add("Text", "x60 y464 w" (GW-70) " h14", "0")
-G.Add("Text", "x0 y480 w" GW " h1 Background1A1A2A")
+LoopCountLbl := G.Add("Text", "x60 y504 w" (GW-70) " h14", "0")
+G.Add("Text", "x0 y520 w" GW " h1 Background1A1A2A")
 
 ; ── 效率监控 ──
 G.SetFont("s8 Bold c444455", "Consolas")
-G.Add("Text", "x10 y486 w" (GW-20) " h14", "[ 效率监控 ]")
+G.Add("Text", "x10 y526 w" (GW-20) " h14", "[ 效率监控 ]")
 G.SetFont("s8 c666677", "Consolas")
-G.Add("Text", "x10 y502 w60 h14", "运行时长:")
-G.Add("Text", "x10 y518 w60 h14", "预期效率:")
+G.Add("Text", "x10 y542 w60 h14", "运行时长:")
+G.Add("Text", "x10 y558 w60 h14", "预期效率:")
 G.SetFont("s8 cFFFFFF", "Consolas")
-ElapsedLbl := G.Add("Text", "x74 y502 w60 h14", "—")
+ElapsedLbl := G.Add("Text", "x74 y542 w60 h14", "—")
 G.SetFont("s8 c00FF88", "Consolas")
-G.Add("Text", "x150 y502 w46 h14", "总点数:")
-PointsLbl  := G.Add("Text", "x200 y502 w" (GW-210) " h14", "—")
+G.Add("Text", "x150 y542 w46 h14", "总点数:")
+PointsLbl  := G.Add("Text", "x200 y542 w" (GW-210) " h14", "—")
 G.SetFont("s8 Bold cFFD700", "Consolas")
-EffLbl     := G.Add("Text", "x74 y518 w" (GW-84) " h14", "—")
-G.Add("Text", "x0 y534 w" GW " h1 Background2A2A4A")
+EffLbl     := G.Add("Text", "x74 y558 w" (GW-84) " h14", "—")
+G.Add("Text", "x0 y574 w" GW " h1 Background2A2A4A")
 
 ; ── 后台状态 ──
 G.SetFont("s8 Bold c00CFFF", "Consolas")
-G.Add("Text", "x10 y540 w" (GW-20) " h14", "[ 后台发键状态 ]")
+G.Add("Text", "x10 y580 w" (GW-20) " h14", "[ 后台发键状态 ]")
 G.SetFont("s8 c666677", "Consolas")
-G.Add("Text", "x10 y556 w60 h14", "游戏进程:")
+G.Add("Text", "x10 y596 w60 h14", "游戏进程:")
 G.SetFont("s8 cFFFFFF", "Consolas")
-hwndLbl    := G.Add("Text", "x74 y556 w" (GW-84) " h14", "未找到")
+hwndLbl    := G.Add("Text", "x74 y596 w" (GW-84) " h14", "未找到")
 G.SetFont("s8 c444455", "Consolas")
-refreshBtn := G.Add("Button", "x" (GW-68) " y552 w60 h18", "刷新窗口")
+refreshBtn := G.Add("Button", "x" (GW-68) " y592 w60 h18", "刷新窗口")
 refreshBtn.OnEvent("Click", (*) => (FindGame(), UpdateHwndLabel()))
-G.Add("Text", "x0 y572 w" GW " h1 Background2A2A4A")
+G.Add("Text", "x0 y612 w" GW " h1 Background2A2A4A")
 
 ; ── 按键记录 ──
 G.SetFont("s8 Bold cFFD700", "Consolas")
-G.Add("Text", "x10 y578 w100 h14", "[ 按键记录 ]")
+G.Add("Text", "x10 y618 w100 h14", "[ 按键记录 ]")
 G.SetFont("s8 c444455", "Consolas")
-clearBtn := G.Add("Button", "x" (GW-68) " y574 w60 h18", "清空日志")
+clearBtn := G.Add("Button", "x" (GW-68) " y614 w60 h18", "清空日志")
 clearBtn.OnEvent("Click", (*) => (logBox.Value := ""))
 G.SetFont("s8 c00FF99", "Consolas")
-logBox := G.Add("Edit", "x10 y595 w" (GW-20) " h140 ReadOnly -E0x200 Background0A0A18")
+logBox := G.Add("Edit", "x10 y635 w" (GW-20) " h140 ReadOnly -E0x200 Background0A0A18")
 
-G.Show("x10 y10 w" GW " h745 NoActivate")
+G.Show("x10 y10 w" GW " h785 NoActivate")
 
 FindGame()
 UpdateHwndLabel()
-
-; ══════════════════════════════════════════════════════════════
-;  导航序列定义
-; ══════════════════════════════════════════════════════════════
-
-; 蓝图 → 车库
-SEQ_MTG := [
-    ["Down",  100,  150],
-    ["Down",  100,  150],
-    ["Down",  100,  150],
-    ["Down",  100,  600],
-    ["Enter", 100, 1000],
-    ["Enter", 100, 18000],
-    ["Esc",   100, 1500],
-    ["PgDn",  100,  400],
-    ["PgDn",  100, 1000],
-    ["Enter", 100,  800],
-    ["Enter", 100, 13000],
-    ["Right", 100, 2000],
-]
-
-; 车库 → 蓝图
-SEQ_GTM := [
-    ["Esc",   100, 11000],
-    ["Esc",   100, 1100],
-    ["PgDn",  100,  150],
-    ["PgDn",  100,  150],
-    ["PgDn",  100,  150],
-    ["PgDn",  100,  500],
-    ["Enter", 100,  900],
-    ["Enter", 100, 1000],
-    ["PgDn",  100,  150],
-    ["PgDn",  100,  150],
-    ["PgDn",  100,  150],
-    ["PgDn",  100,  150],
-    ["PgDn",  100,  150],
-    ["PgDn",  100,  150],
-    ["PgDn",  100, 5000],
-    ["Enter", 100, 5000],
-    ["Enter", 100, 3000],
-    ["Y",     100, 1000],
-    ["Enter", 100, 1000],
-    ["Esc",   100, 1000],
-    ["Enter", 100, 14000],
-]
 
 ; ══════════════════════════════════════════════════════════════
 ;  注册热键
@@ -271,7 +349,7 @@ Hotkey HOT_MASTERY, ToggleB
 Hotkey HOT_WLOOP,   ToggleW
 
 ; ══════════════════════════════════════════════════════════════
-;  工具函数（原有，不变）
+;  工具函数
 ; ══════════════════════════════════════════════════════════════
 
 GSend(keys) {
@@ -403,11 +481,10 @@ WaitBottomLeftNotBlack() {
         } catch {
             return true
         }
-        ; 底部黑条水平居中，y距底边1px，5点横向散开
         allBlack := true
         loop 5 {
-            sx  := (cw // 2) - 40 + (A_Index - 1) * 20   ; 围绕中心 x-40~x+40
-            sy  := ch - 1                                   ; 距底边1px
+            sx  := (cw // 2) - 40 + (A_Index - 1) * 20
+            sy  := ch - 1
             col := GetWindowPixelColor(GameHwnd, sx, sy)
             if (col & 0xFFFFFF) > 0x0A0A0A {
                 allBlack := false
@@ -424,7 +501,6 @@ WaitBottomLeftNotBlack() {
     }
 }
 
-; ── 买车循环的可中断 Sleep ────────────────────────────────────
 SafeSleep(ms) {
     global bcRunning
     elapsed := 0
@@ -452,7 +528,6 @@ Press(key, holdMs, afterMs) {
     return true
 }
 
-; ── 熟练度的可中断 Sleep ─────────────────────────────────────
 InterruptSleep(ms) {
     global bRunning
     deadline := A_TickCount + ms
@@ -538,6 +613,7 @@ RunBuyCarBody() {
     global BC_INIT_WAIT, BC_MENU_ENTER, BC_CONFIRM_WAIT, BC_PURCHASE_CFM
     global BC_AFTER_BUY, BC_ESC_WAIT, BC_SKILL_ENTER, BC_SKILL_SETTLE
     global BC_SKILL_APPLY, BC_SKILL_APPLY2, BC_ESC_FINAL, BC_ESC_FINAL2
+    global brandOrder
 
     Log("--- 买车 ---")
     if !SafeSleep(BC_INIT_WAIT)
@@ -548,20 +624,46 @@ RunBuyCarBody() {
         return false
     if !Press("Up", 80, 80)
         return false
-    if !Press("Enter", 100, BC_MENU_ENTER) 
+    if !Press("Enter", 100, BC_MENU_ENTER)
         return false
     if !Press("BackSpace", 100, 800)
         return false
-    if !Press("Right", 80, 150)
-        return false
-    if !Press("Right", 80, 150)
-        return false
-    if !Press("Right", 80, 150)
-        return false
-    if !Press("Up", 80, 150)
-        return false
-    if !Press("Up", 80, 150)
-        return false
+
+    ; ── 品牌导航（根据品牌顺序配置）──
+    if brandOrder = "pinyin" {
+        ; 拼音排序：Right×3, Up×2
+        Log("  [品牌导航] 拼音模式")
+        if !Press("Right", 80, 150) 
+            return false
+        if !Press("Right", 80, 150) 
+            return false
+        if !Press("Right", 80, 150) 
+            return false
+        if !Press("Up",    80, 150) 
+            return false
+        if !Press("Up",    80, 150) 
+            return false
+    } else {
+        ; 非拼音排序：Right×1, Up×7
+        Log("  [品牌导航] 非拼音模式")
+        if !Press("Right", 80, 150) 
+            return false
+        if !Press("Up",    80, 150) 
+            return false
+        if !Press("Up",    80, 150) 
+            return false
+        if !Press("Up",    80, 150) 
+            return false
+        if !Press("Up",    80, 150) 
+            return false
+        if !Press("Up",    80, 150) 
+            return false
+        if !Press("Up",    80, 150) 
+            return false
+        if !Press("Up",    80, 150) 
+            return false
+    }
+
     if !Press("Enter", 80, 1000)
         return false
     if !Press("Right", 80, 150)
@@ -570,7 +672,7 @@ RunBuyCarBody() {
         return false
     if !Press("Right", 80, 150)
         return false
-    if !Press("Enter", 80, BC_CONFIRM_WAIT) 
+    if !Press("Enter", 80, BC_CONFIRM_WAIT)
         return false
     if !Press("y", 80, BC_PURCHASE_CFM)
         return false
@@ -588,11 +690,11 @@ RunBuyCarBody() {
     Log("--- 加点 ---")
     if !Press("Esc", 100, BC_ESC_WAIT)
         return false
-    if !Press("Right", 100, BC_SKILL_ENTER) 
+    if !Press("Right", 100, BC_SKILL_ENTER)
         return false
     if !Press("Down", 100, 700)
         return false
-    if !Press("Enter", 100, BC_SKILL_SETTLE) 
+    if !Press("Enter", 100, BC_SKILL_SETTLE)
         return false
     if !Press("Down", 80, 150)
         return false
@@ -610,7 +712,7 @@ RunBuyCarBody() {
         return false
     if !Press("Enter", 80, BC_SKILL_APPLY)
         return false
-    if !Press("Enter", 80, BC_SKILL_APPLY2) 
+    if !Press("Enter", 80, BC_SKILL_APPLY2)
         return false
     if !Press("Right", 80, 250)
         return false
@@ -634,8 +736,8 @@ RunBuyCarBody() {
         return false
     if !Press("Esc", 80, BC_ESC_FINAL)
         return false
-    if !Press("Esc", 80, BC_ESC_FINAL2) 
-         return false
+    if !Press("Esc", 80, BC_ESC_FINAL2)
+        return false
     if !Press("Left", 80, 0)
         return false
     return true
@@ -791,9 +893,6 @@ RunMasteryBody() {
     GSend "{w up}"
     bCurrentHeldKey := ""
 
-    ; ── 等待结算画面出现（检测底部中央像素变为暗灰色）────────
-    ; 目标色：暗灰 avg亮度 0x18~0x50，RGB接近（灰色调）
-    ; 超过20秒则跳过X操作直接进结算
     SetPhase("等待结算画面")
     waitStart := A_TickCount
     gotResult := false
@@ -828,7 +927,6 @@ RunMasteryBody() {
         return false
 
     if gotResult {
-        ; 正常流程：X 操作 + 前两次 Enter
         SetPhase("X 操作")
         bCurrentHeldKey := "x"
         GSend "{x down}"
@@ -853,7 +951,6 @@ RunMasteryBody() {
         Sleep 100
     }
 
-    ; 超时或正常流程都执行：ESC → Left → Enter×2 → 等待结算
     GSend "{ESC down}"
     Sleep 100
     GSend "{ESC up}"
@@ -881,11 +978,6 @@ RunMasteryBody() {
     bCurrentHeldKey := ""
     Sleep 150
 
-    ; ── 等待 Horizon Festival 加载画面消失 ───────────────────
-    ; 采样屏幕正中央5个点，检测青绿/粉红加载画面
-    ; 青绿(teal): R<100 && G>130 && B>100
-    ; 粉红(pink): R>160 && G<100 && B>60
-    ; 任意一点命中则继续等待，直到画面消失
     SetPhase("等待加载画面消失")
     loop {
         if !bRunning
@@ -898,7 +990,7 @@ RunMasteryBody() {
         py := _lh // 2
         onLoadScreen := false
         loop 5 {
-            sx  := px - 40 + (A_Index - 1) * 20   ; x: center-40~center+40
+            sx  := px - 40 + (A_Index - 1) * 20
             col := GetWindowPixelColor(GameHwnd, sx, py)
             r   := (col >> 16) & 0xFF
             g   := (col >>  8) & 0xFF
@@ -967,7 +1059,7 @@ RunNavSeq(seq) {
 ;  F6  调试: 蓝图→车库 导航
 ; ══════════════════════════════════════════════════════════════
 ToggleNavMTG(*) {
-    global navRunning, SEQ_MTG
+    global navRunning
     if navRunning {
         navRunning := false
         SetNavStatus("■ 已停止", "888888")
@@ -988,13 +1080,13 @@ ToggleNavMTG(*) {
     }
     navRunning := true
     SetNavStatus("▶ 蓝图→车库", "00FF88")
-    Log(">>> 导航启动: 蓝图→车库")
+    Log(">>> 导航启动: 蓝图→车库 [" (navConfig = "low" ? "低配" : "高配") "]")
     SetTimer NavMTGRun, -1
 }
 
 NavMTGRun() {
-    global navRunning, SEQ_MTG
-    RunNavSeq(SEQ_MTG)
+    global navRunning
+    RunNavSeq(GetSeqMTG())
     navRunning := false
     SetNavStatus("■ 待机", "888888")
     Log("--- 蓝图→车库 完成 ---")
@@ -1004,7 +1096,7 @@ NavMTGRun() {
 ;  F7  调试: 车库→蓝图 导航
 ; ══════════════════════════════════════════════════════════════
 ToggleNavGTM(*) {
-    global navRunning, SEQ_GTM
+    global navRunning
     if navRunning {
         navRunning := false
         SetNavStatus("■ 已停止", "888888")
@@ -1025,13 +1117,13 @@ ToggleNavGTM(*) {
     }
     navRunning := true
     SetNavStatus("▶ 车库→蓝图", "00FF88")
-    Log(">>> 导航启动: 车库→蓝图")
+    Log(">>> 导航启动: 车库→蓝图 [" (navConfig = "low" ? "低配" : "高配") "]")
     SetTimer NavGTMRun, -1
 }
 
 NavGTMRun() {
-    global navRunning, SEQ_GTM
-    RunNavSeq(SEQ_GTM)
+    global navRunning
+    RunNavSeq(GetSeqGTM())
     navRunning := false
     SetNavStatus("■ 待机", "888888")
     Log("--- 车库→蓝图 完成 ---")
@@ -1044,7 +1136,6 @@ ToggleAuto(*) {
     global autoRunning, bRunning, bcRunning, navRunning
     global autoCycleLbl, autoPhaseLbl, GameHwnd
     if autoRunning {
-        ; 停止：把所有子循环的 running 旗标也关掉
         autoRunning := false
         bRunning    := false
         bcRunning   := false
@@ -1076,7 +1167,7 @@ ToggleAuto(*) {
     autoCycleLbl.Value := "0"
     autoPhaseLbl.Value := "启动中..."
     SetAutoStatus("▶ 运行中", "00FF88")
-    Log(">>> 自动大循环 启动")
+    Log(">>> 自动大循环 启动 [导航:" (navConfig = "low" ? "低配" : "高配") " 品牌:" (brandOrder = "pinyin" ? "拼音" : "非拼音") "]")
     Log("    熟练度 " AUTO_MASTERY_LOOPS " 轮 → 蓝图→车库 → 买车 " AUTO_BUYCAR_TIMES " 次 → 车库→蓝图 → 循环")
     SetTimer AutoBigLoop, -1
 }
@@ -1086,7 +1177,6 @@ AutoBigLoop() {
     global bRunning, bCurrentHeldKey, bLoopCount, bStartTime, LoopCountLbl, ElapsedLbl
     global bcRunning, bcLoopCount, bcTotal, bcStartTime, bcProgressLbl, bcTimerLbl
     global navRunning
-    global SEQ_MTG, SEQ_GTM
     global AUTO_MASTERY_LOOPS, AUTO_BUYCAR_TIMES
     global MA_INIT_WAIT, MA_DRIVE_MS, MA_DRIVE_EXTRA, MA_SETTLE_MS
 
@@ -1101,11 +1191,10 @@ AutoBigLoop() {
             Log("  等待蓝图页面稳定 5s（防止首圈打空）")
             Sleep 5000
             if !autoRunning
-            break
+                break
         }
-        ; ────────────────────────────────────────────────────
-        ;  Phase 1: 刷熟练度 AUTO_MASTERY_LOOPS 轮
-        ; ────────────────────────────────────────────────────
+
+        ; ── Phase 1: 刷熟练度 ────────────────────────────────
         Log(">>> Phase 1: 刷熟练度 " AUTO_MASTERY_LOOPS " 轮")
         bLoopCount      := 0
         bCurrentHeldKey := ""
@@ -1145,24 +1234,20 @@ AutoBigLoop() {
         }
         Log("✓ 熟练度完成 " AUTO_MASTERY_LOOPS " 轮")
 
-        ; ────────────────────────────────────────────────────
-        ;  Phase 2: 蓝图 → 车库
-        ; ────────────────────────────────────────────────────
-        Log(">>> Phase 2: 导航 蓝图→车库")
+        ; ── Phase 2: 蓝图 → 车库 ─────────────────────────────
+        Log(">>> Phase 2: 导航 蓝图→车库 [" (navConfig = "low" ? "低配" : "高配") "]")
         autoPhaseLbl.Value := "导航: 蓝图→车库"
         navRunning := true
         SetNavStatus("▶ 蓝图→车库", "00FF88")
-        ok := RunNavSeq(SEQ_MTG)
+        ok := RunNavSeq(GetSeqMTG())
         navRunning := false
         SetNavStatus("■ 待机", "888888")
         if !ok || !autoRunning
             break
         Log("✓ 导航完成 蓝图→车库")
 
-        ; ────────────────────────────────────────────────────
-        ;  Phase 3: 买车 + 加点 AUTO_BUYCAR_TIMES 次
-        ; ────────────────────────────────────────────────────
-        Log(">>> Phase 3: 买车加点 " AUTO_BUYCAR_TIMES " 次")
+        ; ── Phase 3: 买车 + 加点 ─────────────────────────────
+        Log(">>> Phase 3: 买车加点 " AUTO_BUYCAR_TIMES " 次 [" (brandOrder = "pinyin" ? "拼音" : "非拼音") "]")
         bcLoopCount := 0
         bcTotal     := AUTO_BUYCAR_TIMES
         bcRunning   := true
@@ -1200,14 +1285,12 @@ AutoBigLoop() {
         }
         Log("✓ 买车加点完成 " AUTO_BUYCAR_TIMES " 次")
 
-        ; ────────────────────────────────────────────────────
-        ;  Phase 4: 车库 → 蓝图
-        ; ────────────────────────────────────────────────────
-        Log(">>> Phase 4: 导航 车库→蓝图")
+        ; ── Phase 4: 车库 → 蓝图 ─────────────────────────────
+        Log(">>> Phase 4: 导航 车库→蓝图 [" (navConfig = "low" ? "低配" : "高配") "]")
         autoPhaseLbl.Value := "导航: 车库→蓝图"
         navRunning := true
         SetNavStatus("▶ 车库→蓝图", "00FF88")
-        ok := RunNavSeq(SEQ_GTM)
+        ok := RunNavSeq(GetSeqGTM())
         navRunning := false
         SetNavStatus("■ 待机", "888888")
         if !ok || !autoRunning
